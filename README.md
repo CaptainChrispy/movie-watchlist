@@ -1,6 +1,6 @@
-# 🎬 Movie Watchlist
+# Movie Time
 
-A Netflix-style shared movie watchlist for you and your friends.
+A Netflix-inspired shared movie watchlist for you and your friends.
 
 ## Setup and Configuration
 
