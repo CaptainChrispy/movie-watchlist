@@ -37,11 +37,7 @@ function showConfigError() {
     const modal = document.querySelector('.modal-content');
     modal.innerHTML = `
         <h2>Configuration Error</h2>
-        <p>The application configuration is missing. Please:</p>
-        <ol style="text-align: left; margin: 1rem 0;">
-            <li>For local development: Run <code>generate-config.ps1</code></li>
-            <li>For production: Ensure GitHub Secrets are configured</li>
-        </ol>
+        <p>The application configuration is missing. Please ensure the config.js file is properly set up with your API keys.</p>
         <button onclick="location.reload()">Reload Page</button>
     `;
 }
@@ -314,20 +310,7 @@ function createMovieCard(movie, isWatchlist, index) {
 
 // Watchlist management
 async function loadWatchlist() {
-    if (CONFIG.USE_SHARED_STORAGE && CONFIG.GITHUB_TOKEN && CONFIG.GIST_ID && CONFIG.GIST_ID !== 'none') {
-        try {
-            setSyncStatus('syncing', 'Loading...');
-            await loadWatchlistFromGist();
-            setSyncStatus('synced', 'Synced');
-        } catch (error) {
-            console.error('Failed to load from Gist, using localStorage:', error);
-            setSyncStatus('error', 'Sync failed');
-            loadWatchlistLocal();
-        }
-    } else {
-        loadWatchlistLocal();
-        setSyncStatus('local', 'Local only');
-    }
+    loadWatchlistLocal();
 }
 
 function loadWatchlistLocal() {
@@ -335,100 +318,13 @@ function loadWatchlistLocal() {
     watchlist = saved ? JSON.parse(saved) : [];
 }
 
-async function loadWatchlistFromGist() {
-    const response = await fetch(`https://api.github.com/gists/${CONFIG.GIST_ID}`, {
-        headers: {
-            'Authorization': `token ${CONFIG.GITHUB_TOKEN}`,
-            'Accept': 'application/vnd.github.v3+json'
-        }
-    });
-    
-    if (response.ok) {
-        const gist = await response.json();
-        const content = gist.files['watchlist.json']?.content;
-        if (content) {
-            watchlist = JSON.parse(content);
-        } else {
-            watchlist = [];
-        }
-    } else {
-        throw new Error(`Failed to load gist: ${response.status}`);
-    }
-}
-
 async function saveWatchlist() {
     updateWatchlistCount();
-    
-    if (CONFIG.USE_SHARED_STORAGE && CONFIG.GITHUB_TOKEN) {
-        try {
-            setSyncStatus('syncing', 'Saving...');
-            await saveWatchlistToGist();
-            setSyncStatus('synced', 'Synced');
-        } catch (error) {
-            console.error('Failed to save to Gist, using localStorage:', error);
-            setSyncStatus('error', 'Sync failed');
-            saveWatchlistLocal();
-        }
-    } else {
-        saveWatchlistLocal();
-        setSyncStatus('local', 'Local only');
-    }
+    saveWatchlistLocal();
 }
 
 function saveWatchlistLocal() {
     localStorage.setItem(CONFIG.STORAGE_KEYS.WATCHLIST, JSON.stringify(watchlist));
-}
-
-async function saveWatchlistToGist() {
-    const watchlistData = JSON.stringify(watchlist, null, 2);
-    
-    // If no GIST_ID or placeholder, create a new gist
-    if (!CONFIG.GIST_ID || CONFIG.GIST_ID === 'none') {
-        const response = await fetch('https://api.github.com/gists', {
-            method: 'POST',
-            headers: {
-                'Authorization': `token ${CONFIG.GITHUB_TOKEN}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                description: 'Movie Watchlist Data',
-                public: false,
-                files: {
-                    'watchlist.json': {
-                        content: watchlistData
-                    }
-                }
-            })
-        });
-        
-        if (response.ok) {
-            const gist = await response.json();
-            console.log('Created new Gist ID:', gist.id);
-            showNotification(`Gist created! Add this ID to your config: ${gist.id}`);
-        }
-    } else {
-        // Update existing gist
-        const response = await fetch(`https://api.github.com/gists/${CONFIG.GIST_ID}`, {
-            method: 'PATCH',
-            headers: {
-                'Authorization': `token ${CONFIG.GITHUB_TOKEN}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                files: {
-                    'watchlist.json': {
-                        content: watchlistData
-                    }
-                }
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Failed to update gist: ${response.status}`);
-        }
-    }
 }
 
 function addToWatchlist(movie) {
@@ -485,22 +381,6 @@ function clearWatchlist() {
 
 function updateWatchlistCount() {
     document.getElementById('watchlist-count').textContent = watchlist.length;
-}
-
-function setSyncStatus(status, text) {
-    const syncElement = document.getElementById('sync-status');
-    if (syncElement) {
-        syncElement.textContent = text;
-        syncElement.className = `sync-status ${status}`;
-        
-        // Clear synced status after 3 seconds
-        if (status === 'synced') {
-            setTimeout(() => {
-                syncElement.textContent = '';
-                syncElement.className = 'sync-status';
-            }, 3000);
-        }
-    }
 }
 
 // Movie overlay functions
