@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Watchlist</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="config.js"></script>
+</head>
+<body>
+    <!-- Authentication Modal -->
+    <div id="auth-modal" class="modal">
+        <div class="modal-content">
+            <h2>Enter Access Code</h2>
+            <input type="password" id="access-code" placeholder="Enter access code">
+            <button onclick="authenticate()">Access Watchlist</button>
+            <p class="error-message" id="auth-error"></p>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="app" class="hidden">
+        <header>
+            <h1>🎬 Movie Watchlist</h1>
+            <button id="logout-btn" onclick="logout()">Logout</button>
+        </header>
+
+        <nav class="nav-tabs">
+            <button class="tab-btn active" onclick="showTab('search')">Search Movies</button>
+            <button class="tab-btn" onclick="showTab('watchlist')">Our Watchlist</button>
+        </nav>
+
+        <!-- Search Tab -->
+        <div id="search-tab" class="tab-content active">
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Search for movies...">
+            </div>
+            <div id="search-results" class="movie-grid"></div>
+            <div id="search-loading" class="loading hidden">Searching...</div>
+        </div>
+
+        <!-- Watchlist Tab -->
+        <div id="watchlist-tab" class="tab-content">
+            <div class="watchlist-header">
+                <h2>Our Watchlist (<span id="watchlist-count">0</span> movies) <span id="sync-status" class="sync-status"></span></h2>
+                <button onclick="clearWatchlist()" class="clear-btn">Clear All</button>
+            </div>
+            <div id="watchlist-results" class="movie-grid"></div>
+            <div id="watchlist-empty" class="empty-state">
+                <p>Our watchlist is empty. Start by searching for movies!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Movie Details Overlay -->
+    <div id="movie-overlay" class="movie-overlay hidden">
+        <div class="overlay-backdrop" onclick="closeMovieOverlay()"></div>
+        <div class="overlay-content">
+            <button class="close-btn" onclick="closeMovieOverlay()">&times;</button>
+            <div class="overlay-info">
+                <img id="overlay-poster" class="overlay-poster" src="" alt="">
+                <div class="overlay-details">
+                    <h2 id="overlay-title"></h2>
+                    <p id="overlay-year"></p>
+                    <p id="overlay-overview"></p>
+                    <button id="overlay-add-btn" class="add-to-watchlist-btn">
+                        <span>+</span> Add to Watchlist
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
