@@ -6,12 +6,7 @@ let currentSearchQuery = '';
 // Configuration loaded from config.js
 const CONFIG = window.MovieWatchlistConfig || {};
 
-// Virtual scrolling configuration
-const VIRTUAL_SCROLL = {
-    itemHeight: 450, // Approximate height of each movie card
-    visibleItems: 8, // Number of items to render at once
-    buffer: 2 // Extra items to render for smooth scrolling
-};
+
 
 // Authentication
 function checkAuth() {
@@ -170,44 +165,7 @@ async function searchMovies() {
     }
 }
 
-// Virtual scrolling implementation
-function createVirtualScrollContainer(container, items, renderItem) {
-    const totalHeight = items.length * VIRTUAL_SCROLL.itemHeight;
-    const visibleHeight = container.clientHeight;
-    const scrollTop = container.scrollTop;
-    
-    const startIndex = Math.floor(scrollTop / VIRTUAL_SCROLL.itemHeight);
-    const endIndex = Math.min(
-        startIndex + VIRTUAL_SCROLL.visibleItems + VIRTUAL_SCROLL.buffer,
-        items.length
-    );
-    
-    // Clear container
-    container.innerHTML = '';
-    
-    // Create spacer for items above viewport
-    if (startIndex > 0) {
-        const topSpacer = document.createElement('div');
-        topSpacer.style.height = `${startIndex * VIRTUAL_SCROLL.itemHeight}px`;
-        container.appendChild(topSpacer);
-    }
-    
-    // Render visible items
-    for (let i = startIndex; i < endIndex; i++) {
-        if (items[i]) {
-            const element = renderItem(items[i], i);
-            container.appendChild(element);
-        }
-    }
-    
-    // Create spacer for items below viewport
-    const remainingItems = items.length - endIndex;
-    if (remainingItems > 0) {
-        const bottomSpacer = document.createElement('div');
-        bottomSpacer.style.height = `${remainingItems * VIRTUAL_SCROLL.itemHeight}px`;
-        container.appendChild(bottomSpacer);
-    }
-}
+
 
 // Render functions
 function renderSearchResults() {
@@ -218,17 +176,10 @@ function renderSearchResults() {
         return;
     }
     
-    // For smaller result sets, render all items normally
-    if (searchResults.length <= 20) {
-        container.innerHTML = '';
-        searchResults.forEach((movie, index) => {
-            const movieElement = createMovieCard(movie, false, index);
-            container.appendChild(movieElement);
-        });
-    } else {
-        // Use virtual scrolling for larger result sets
-        setupVirtualScrolling(container, searchResults, false);
-    }
+    container.innerHTML = '';
+    searchResults.forEach(movie => {
+        container.appendChild(createMovieCard(movie));
+    });
 }
 
 function renderWatchlist() {
@@ -242,41 +193,13 @@ function renderWatchlist() {
     }
     
     emptyState.classList.add('hidden');
-    
-    // For smaller watchlists, render all items normally
-    if (watchlist.length <= 20) {
-        container.innerHTML = '';
-        watchlist.forEach((movie, index) => {
-            const movieElement = createMovieCard(movie, true, index);
-            container.appendChild(movieElement);
-        });
-    } else {
-        // Use virtual scrolling for larger watchlists
-        setupVirtualScrolling(container, watchlist, true);
-    }
+    container.innerHTML = '';
+    watchlist.forEach(movie => {
+        container.appendChild(createMovieCard(movie));
+    });
 }
 
-function setupVirtualScrolling(container, items, isWatchlist) {
-    let scrollTimeout;
-    
-    const handleScroll = () => {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-            createVirtualScrollContainer(container, items, (movie, index) => 
-                createMovieCard(movie, isWatchlist, index)
-            );
-        }, 10);
-    };
-    
-    container.addEventListener('scroll', handleScroll);
-    
-    // Initial render
-    createVirtualScrollContainer(container, items, (movie, index) => 
-        createMovieCard(movie, isWatchlist, index)
-    );
-}
-
-function createMovieCard(movie, isWatchlist, index) {
+function createMovieCard(movie) {
     const card = document.createElement('div');
     card.className = 'movie-card';
     
@@ -285,46 +208,43 @@ function createMovieCard(movie, isWatchlist, index) {
         : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="500" height="750" viewBox="0 0 500 750"><rect width="500" height="750" fill="%232a2a2a"/><text x="250" y="375" text-anchor="middle" fill="%23666" font-size="24">No Poster</text></svg>';
     
     const isInWatchlist = watchlist.some(w => w.id === movie.id);
+    const buttonText = isInWatchlist ? '✓' : '+';
+    const buttonClass = isInWatchlist ? 'add-btn added' : 'add-btn';
+    const buttonTitle = isInWatchlist ? 'Remove from watchlist' : 'Add to watchlist';
     
-    // Always show current watchlist status, regardless of which tab we're on
     card.innerHTML = `
         <img src="${posterUrl}" alt="${movie.title}" class="movie-poster" loading="lazy">
         <div class="movie-card-overlay">
             <div class="movie-title-overlay">${movie.title}</div>
         </div>
-        ${isInWatchlist ? 
-            `<button class="add-btn added" onclick="removeFromWatchlist(${movie.id})" title="Remove from watchlist">✓</button>` :
-            `<button class="add-btn" onclick="addToWatchlist(${JSON.stringify(movie).replace(/"/g, '&quot;')})" title="Add to watchlist">+</button>`
-        }
+        <button class="${buttonClass}" title="${buttonTitle}">${buttonText}</button>
     `;
     
-    // Add click handler to open overlay
-    card.addEventListener('click', (e) => {
-        // Don't open overlay if clicking the add button
-        if (e.target.classList.contains('add-btn')) return;
-        openMovieOverlay(movie);
+    // Add event listeners
+    const addBtn = card.querySelector('.add-btn');
+    addBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isInWatchlist) {
+            removeFromWatchlist(movie.id);
+        } else {
+            addToWatchlist(movie);
+        }
     });
+    
+    card.addEventListener('click', () => openMovieOverlay(movie));
     
     return card;
 }
 
 // Watchlist management
-async function loadWatchlist() {
-    loadWatchlistLocal();
-}
-
-function loadWatchlistLocal() {
+function loadWatchlist() {
     const saved = localStorage.getItem(CONFIG.STORAGE_KEYS.WATCHLIST);
     watchlist = saved ? JSON.parse(saved) : [];
 }
 
-async function saveWatchlist() {
-    updateWatchlistCount();
-    saveWatchlistLocal();
-}
-
-function saveWatchlistLocal() {
+function saveWatchlist() {
     localStorage.setItem(CONFIG.STORAGE_KEYS.WATCHLIST, JSON.stringify(watchlist));
+    updateWatchlistCount();
 }
 
 function addToWatchlist(movie) {
